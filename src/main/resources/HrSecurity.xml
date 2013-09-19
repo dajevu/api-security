@@ -1,0 +1,34 @@
+<ClientSecurity>
+    <Client>
+        <Client name="Vendor1">
+            <SecuritySetup>
+                <AccessKeyId>A12345</AccessKeyId>
+                <AccessSecretPass>Abc123!</AccessSecretPass>
+            </SecuritySetup>
+            <InternalApi>
+                <UserId>internal-api-user</UserId>
+                <UserPass>pass</UserPass>
+            </InternalApi>
+            <IpAddresses>
+                <IpAddresses>0:0:0:0:0:0:0:1%0</IpAddresses>
+                <IpAddresses>25.238.11.170</IpAddresses>
+                <IpAddresses>127.0.0.1</IpAddresses>
+            </IpAddresses>
+        </Client>
+        
+        <Client name="Vendor2">
+            <SecuritySetup>
+                <AccessKeyId>B12345</AccessKeyId>
+                <AccessSecretPass>bcd123!</AccessSecretPass>
+            </SecuritySetup>
+            <InternalApi>
+                <UserId>User2</UserId>
+                <UserPass>UserPass2</UserPass>
+            </InternalApi>
+            <IpAddresses>
+                <IpAddresses>localhost</IpAddresses>
+                <IpAddresses>25.238.11.170</IpAddresses>
+            </IpAddresses>
+        </Client>
+    </Client>
+</ClientSecurity>

@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:cxf="http://camel.apache.org/schema/cxf"
+	xmlns:camel="http://camel.apache.org/schema/spring" xmlns:jaxrs="http://cxf.apache.org/jaxrs"
+	xmlns:jaxws="http://cxf.apache.org/jaxws"
+    xmlns:ctx="http://www.springframework.org/schema/context"
+    xmlns:bean="http://www.springframework.org/schema/beans"
+    xmlns:mvc="http://www.springframework.org/schema/mvc"
+    xmlns:rabbit="http://www.springframework.org/schema/rabbit"
+	xsi:schemaLocation="
+	     http://www.springframework.org/schema/rabbit
+	     http://www.springframework.org/schema/rabbit/spring-rabbit-1.0.xsd
+         http://www.springframework.org/schema/beans
+         http://www.springframework.org/schema/beans/spring-beans-3.0.xsd
+         http://camel.apache.org/schema/cxf
+         http://camel.apache.org/schema/cxf/camel-cxf.xsd
+         http://cxf.apache.org/jaxws
+         http://cxf.apache.org/schemas/jaxws.xsd
+         http://camel.apache.org/schema/spring http://camel.apache.org/schema/spring/camel-spring.xsd
+         http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-3.1.xsd
+         http://www.springframework.org/schema/mvc http://www.springframework.org/schema/mvc/spring-mvc-3.1.xsd
+         http://cxf.apache.org/jaxrs
+         http://cxf.apache.org/schemas/jaxrs.xsd">
+
+    <!-- Enables the Spring MVC @Controller programming model -->
+    <mvc:annotation-driven />
+
+    <ctx:component-scan base-package="com.hr.securitygateway" />
+
+    <ctx:property-placeholder location="classpath:application.properties" />
+
+    <bean id="SecurityProcessor" class="com.hr.securitygateway.Security"/>
+    
+    <bean id="OAuthValidator" class="com.hr.securitygateway.OAuthValidator">
+    	<property name="uaaHost" value="${uaa.host}"/>
+    	<property name="uaaPort" value="${uaa.port}"/>
+    	<property name="uaaUsername" value="${uaa.username}"/>
+    	<property name="uaaPassword" value="${uaa.password}"/>
+    </bean>
+
+    <bean id="SecurityHandler" class="com.hr.securitygateway.exceptions.SecurityHandler"/>
+    
+    <bean id="Exception" class="com.hr.securitygateway.exceptions.HrSecurityException">
+    	<constructor-arg index="0" value="No OAuth 2.0 Authorization Header Present"/>
+    </bean>
+
+    <bean id="RabbitProcessor" class="com.hr.securitygateway.RabbitProcessor"/>
+
+    <camelContext xmlns="http://camel.apache.org/schema/spring" id="camel">
+
+        <onException>
+            <exception>com.hr.securitygateway.exceptions.HrSecurityException</exception>
+
+            <handled>
+                <constant>true</constant>
+            </handled>
+
+            <log message="Security exception occurred..."/>
+
+            <to uri="SecurityHandler"/>
+
+        </onException>
+
+        <route>
+            <from uri="servlet:///?matchOnUriPrefix=true"/>
+
+			<to uri="SecurityProcessor"/>
+			
+			<to uri="bean:OAuthValidator"/>
+			
+			<log message="Authorization header is: ${property.AuthorizationToken}"/>
+				
+			<pipeline>		   
+ 				<recipientList>
+ 		        	<simple>https://www.googleapis.com?bridgeEndpoint=true&amp;disableStreamCache=true&amp;httpClient.soTimeout=10000</simple>            	
+            	</recipientList>
+            	<to uri="RabbitProcessor"/>
+            </pipeline>
+
+        </route>
+
+    </camelContext>
+
+    <!-- rabbitMQ settings -->
+
+    <rabbit:connection-factory id="connectionFactory"/>
+
+    <rabbit:template id="amqpRequestTemplate"
+                     connection-factory="connectionFactory"
+                     exchange="${rabbitmq.exchange}"
+                     queue="${rabbitmq.request.routing.key}"
+                     routing-key="${rabbitmq.request.routing.key}"/>
+
+    <rabbit:template id="amqpResponseTemplate"
+                     connection-factory="connectionFactory"
+                     exchange="${rabbitmq.exchange}"
+                     queue="${rabbitmq.response.routing.key}"
+                     routing-key="${rabbitmq.response.routing.key}"/>
+
+    <rabbit:admin connection-factory="connectionFactory"/>
+
+    <rabbit:queue name="${rabbitmq.request.routing.key}" />
+
+    <rabbit:queue name="${rabbitmq.response.routing.key}" />
+
+    <rabbit:direct-exchange name="${rabbitmq.exchange}">
+        <rabbit:bindings>
+            <rabbit:binding queue="${rabbitmq.request.routing.key}" key="${rabbitmq.request.routing.key}"/>
+            <rabbit:binding queue="${rabbitmq.response.routing.key}" key="${rabbitmq.response.routing.key}"/>
+        </rabbit:bindings>
+    </rabbit:direct-exchange>
+
+    <bean id="connectionFactory"
+            class="org.springframework.amqp.rabbit.connection.CachingConnectionFactory">
+        <constructor-arg value="${rabbitmq.host}"/>
+        <constructor-arg value="${rabbitmq.port}"/>
+        <property name="username" value="guest"/>
+        <property name="password" value="guest"/>
+    </bean>
+
+    <!-- end of RabbitMQ settings -->
+
+
+</beans>
