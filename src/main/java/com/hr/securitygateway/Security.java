@@ -4,7 +4,6 @@ import com.fasterxml.jackson.dataformat.xml.XmlMapper;
 import com.hr.securitygateway.digester.ClientSecurity;
 import com.hr.securitygateway.exceptions.HrSecurityException;
 import com.hr.securitygateway.rabbit.RabbitPublisher;
-
 import org.apache.camel.Exchange;
 import org.apache.camel.Message;
 import org.apache.camel.Processor;
